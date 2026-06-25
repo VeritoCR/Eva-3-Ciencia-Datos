@@ -25,16 +25,16 @@ estrategias diferenciadas de retención y recomendación.
 
 ```
 usuarios_streaming.csv ─┐
-perfil_usuarios.csv → Postgres ─┼─→ ETL (extract → validate → transform → load)
+perfil_usuarios.csv → Postgres ─┼─→ etl/extract.py (extraer + integrar)
                                                      │
                                                      ▼
-                                       dataset consolidado de clientes
+                                       dataset consolidado de usuarios
                                                      │
                                                      ▼
                               escalamiento → KMeans (k óptimo vía codo + silhouette)
                                                      │
                                                      ▼
-                                    dashboard interactivo (Streamlit/Dash)
+                                    dashboard interactivo (Streamlit)
 ```
 
 Diagrama completo en [`docs/arquitectura.md`](docs/arquitectura.md).
@@ -43,12 +43,13 @@ Diagrama completo en [`docs/arquitectura.md`](docs/arquitectura.md).
 
 ```
 .
-├── etl/            # Pipeline de extracción, validación, transformación y carga
+├── etl/            # Pipeline de extracción e integración de fuentes
 ├── model/          # Entrenamiento de KMeans, selección de k, perfilamiento de clusters
-├── api/            # API REST (fuente de datos #3 — pendiente de definir)
-├── dashboard/       # Dashboard interactivo
+├── api/            # API REST que expone el modelo entrenado (FastAPI)
+├── dashboards/     # Dashboard interactivo
 ├── tests/          # Pruebas automatizadas
-├── docker/         # Dockerfiles y docker-compose
+├── docker/         # Dockerfiles
+├── database/       # init.sql y carga de perfil_usuarios en Postgres
 ├── docs/           # Documentación técnica y de negocio
 └── data/
 ```
@@ -69,14 +70,15 @@ de configuración de Postgres y variables de entorno.
 ### Opción B: Docker (recomendado para la demo)
 
 ```bash
-cp .env.example .env
-docker compose -f docker/docker-compose.yml up --build
+docker compose up --build
 ```
+
+> Nota: la configuración por variables de entorno (`.env`) todavía no está
+> implementada — es una mejora pendiente. Por ahora, las credenciales de
+> Postgres están definidas directamente en `docker-compose.yml`.
 
 ## Flujo de trabajo en Git
 
 Cada integrante trabaja en su propia rama (`feature/<nombre-de-la-parte>`) y
 todo cambio llega a `main` mediante Pull Request con revisión de al menos otro
 integrante. Ver [`docs/guia_contribucion.md`](docs/guia_contribucion.md).
-
-
