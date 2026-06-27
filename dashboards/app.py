@@ -92,7 +92,7 @@ with tab_ejecutiva:
         st.markdown(f"**Cluster {cluster}** ({n_usuarios} usuarios, {pct:.1f}%): {descripcion}")
 
 # ============================================================
-# VISTA TÉCNICA Y OPERATIVA — las construimos en el siguiente paso
+# VISTA TÉCNICA Y OPERATIVA 
 # ============================================================
 with tab_tecnica:
     st.subheader("Selección del número de clusters (k)")
@@ -124,4 +124,59 @@ with tab_tecnica:
     )
 
 with tab_operativa:
-    st.info("🚧 En construcción — la añadimos en el siguiente paso.")
+    st.subheader("Tabla de usuarios")
+    st.dataframe(df, use_container_width=True, height=300)
+
+    # Variables numéricas relevantes para comparar segmentos
+    # (se excluyen id_cliente, cluster, pc1, pc2: no son variables de comportamiento)
+    variables_comparables = [
+        "horas_consumo_mensual", "gasto_mensual", "cantidad_contenidos_vistos",
+        "sesiones_semana", "porcentaje_finalizacion", "tiempo_promedio_sesion_min",
+        "cantidad_generos_consumidos", "porcentaje_uso_promociones",
+        "antiguedad_cliente_meses", "edad", "dispositivos_registrados",
+        "porcentaje_uso_app_movil", "cantidad_perfiles_creados",
+        "interacciones_mensuales_soporte", "distancia_promedio_red_km",
+    ]
+
+    perfil_promedio = df.groupby("cluster")[variables_comparables].mean()
+
+    # Normalizar 0-1 por variable: así el heatmap y el radar comparan
+    # "qué tan alto relativo a los otros clusters", no escalas absolutas
+    # (ej. gasto_mensual ~$300 vs porcentaje_uso_promociones ~0.3 no se podrían
+    # comparar visualmente sin esto)
+    perfil_normalizado = (perfil_promedio - perfil_promedio.min()) / (
+        perfil_promedio.max() - perfil_promedio.min()
+    )
+
+    st.subheader("Mapa de calor: variables por segmento")
+    fig_heatmap = px.imshow(
+        perfil_normalizado,
+        labels=dict(x="Variable", y="Cluster", color="Nivel relativo"),
+        aspect="auto",
+        color_continuous_scale="Blues",
+    )
+    fig_heatmap.update_yaxes(
+        tickvals=perfil_normalizado.index,
+        ticktext=[f"Cluster {c}" for c in perfil_normalizado.index],
+    )
+    st.plotly_chart(fig_heatmap, use_container_width=True)
+    st.caption(
+        "Valores normalizados (0-1) por variable, para comparar el nivel relativo "
+        "de cada segmento en cada métrica, independientemente de su escala original."
+    )
+
+    st.subheader("Comparación radial entre segmentos")
+    fig_radar = go.Figure()
+    for cluster in perfil_normalizado.index:
+        fig_radar.add_trace(go.Scatterpolar(
+            r=perfil_normalizado.loc[cluster].values,
+            theta=variables_comparables,
+            fill="toself",
+            name=f"Cluster {cluster}",
+        ))
+    fig_radar.update_layout(
+        polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
+        showlegend=True,
+        title="Forma de cada segmento (variables normalizadas)",
+    )
+    st.plotly_chart(fig_radar, use_container_width=True)
